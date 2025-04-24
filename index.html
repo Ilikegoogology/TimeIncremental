@@ -2,149 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Time Incremental</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time Incremental Game</title>
   <style>
-    body { font-family: monospace; background: #0a0a0a; color: #eee; text-align: center; padding: 20px; }
-    button { padding: 10px 20px; margin: 5px; font-size: 16px; background: #222; color: #fff; border: 1px solid #555; cursor: pointer; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .section { margin-top: 30px; }
+    body { font-family: Arial, sans-serif; text-align: center; background-color: #222; color: #eee; }
+    h1 { font-size: 2em; }
+    button { padding: 10px 20px; font-size: 1.2em; background-color: #444; color: #eee; border: none; cursor: pointer; }
+    button:hover { background-color: #666; }
+    .upgrade { margin: 20px; }
+    .status { font-size: 1.5em; }
+    .upgrade-cost { color: #ff9900; }
   </style>
 </head>
 <body>
-  <h1>🕰️ Time Incremental</h1>
-  <p>Time: <span id="time">0.00</span> <span id="unit">cs</span></p>
-  <p>Passive Gain Cooldown: <span id="cooldown">4</span> cs</p>
-  <p id="playtime" style="display:none;">Playtime: 0s</p>
-
-  <div class="section">
-    <button onclick="gainTime()">⏱️ Gain Time</button>
+  <h1>Time Incremental Game</h1>
+  <div class="status">
+    <p>Time: <span id="time">0</span> s</p>
+    <p>CS per second: <span id="csPerSecond">0</span></p>
   </div>
 
-  <div class="section">
-    <h2>Main Upgrades</h2>
-    <div id="mainUpgrades">
-      <button onclick="buyUpgrade(0)" id="u0">Fasten Time (+1cs/4cs) - Cost: 2</button><br>
-      <button onclick="buyUpgrade(1)" id="u1">Decrease Time Gain Cooldown - Cost: 5</button><br>
-      <button onclick="buyUpgrade(2)" id="u2">More Time (+5cs/s) - Cost: 10</button><br>
-      <button onclick="buyUpgrade(3)" id="u3">Unlock Size Mastery - Cost: 15</button>
-    </div>
+  <!-- SM1 Upgrade (Double Chezburger) -->
+  <div class="upgrade">
+    <button id="sm1Button">Buy Double Chezburger (1.15x CS per click) - 1s</button>
   </div>
 
-  <div class="section" id="sizeMastery" style="display:none;">
-    <h2>⚙️ Size Mastery Upgrades</h2>
-    <button onclick="buySizeUp(0)" id="s0">Double Chezburger (×1.15 gain) - Cost: 3 s</button><br>
-    <button onclick="buySizeUp(1)" id="s1">A Dance of Time on Ice (halve cooldown) - Cost: 6 s</button><br>
-    <button onclick="buySizeUp(2)" id="s2">GET OUT (Enable Playtime) - Cost: 9 s</button>
+  <!-- SM2 Upgrade (A Dance of Time on Ice) -->
+  <div class="upgrade">
+    <button id="sm2Button" disabled>Buy A Dance of Time on Ice (Halve Cooldown) - 2.5s</button>
   </div>
+
+  <!-- SM3 Upgrade (GET OUT) -->
+  <div class="upgrade">
+    <button id="sm3Button" disabled>Buy GET OUT (Track Playtime) - 6.66s</button>
+  </div>
+
+  <div id="playtime">Playtime: 0 seconds</div>
 
   <script>
-    let time = 0;
-    let gainCooldown = 4.0;
-    let gainCooldownTimer = 0;
-    let fastenTime = false;
-    let moreTime = false;
-    let sizeMastery = false;
-    let unit = "cs";
-    let gainMultiplier = 1.0;
-    let timeOnIceLevel = 0;
-    let showPlaytime = false;
-    let playtime = 0;
+    let time = 0; // Current time in seconds
+    let csPerSecond = 0; // Current CS per second
+    let sm1Level = 0; // Level for SM1 upgrade (Double Chezburger)
+    let sm2Level = 0; // Level for SM2 upgrade (A Dance of Time on Ice)
+    let sm3Unlocked = false; // Whether the GET OUT upgrade is unlocked
+    let playtime = 0; // Track playtime in seconds
 
-    let upgrades = [
-      { cost: 2, bought: false },
-      { cost: 5, bought: false },
-      { cost: 10, bought: false },
-      { cost: 15, bought: false }
-    ];
-
-    let sizeUpgrades = [
-      { cost: 3, bought: false },
-      { cost: 6, bought: 0 }, // 4 max
-      { cost: 9, bought: false }
-    ];
-
-    function formatTime(t) {
-      return unit === "cs" ? t.toFixed(2) : (t / 100).toFixed(2);
+    // Update the time display
+    function updateTimeDisplay() {
+      document.getElementById('time').textContent = time.toFixed(2);
+      document.getElementById('csPerSecond').textContent = csPerSecond.toFixed(2);
+      document.getElementById('playtime').textContent = `Playtime: ${playtime.toFixed(2)} seconds`;
     }
 
-    function update() {
-      document.getElementById("time").textContent = formatTime(time);
-      document.getElementById("cooldown").textContent = gainCooldown.toFixed(2);
-      if (showPlaytime) {
-        document.getElementById("playtime").textContent = "Playtime: " + Math.floor(playtime) + "s";
+    // Handle time increment based on CS per second
+    function incrementTime() {
+      time += csPerSecond / 10; // Small time increment to make it feel like a game
+      playtime += 0.1; // Increment playtime for tracking
+      updateTimeDisplay();
+    }
+
+    // Buy Double Chezburger upgrade (SM1)
+    document.getElementById('sm1Button').onclick = () => {
+      if (time >= 1) {
+        time -= 1; // Deduct cost of the upgrade
+        sm1Level++;
+        csPerSecond += 0.15; // Increase CS per second
+        document.getElementById('sm1Button').textContent = `Bought Double Chezburger (1.15x CS per click) - ${1 - time.toFixed(2)}s`;
+        if (sm1Level > 0) {
+          document.getElementById('sm2Button').disabled = false; // Unlock next upgrade
+        }
+        updateTimeDisplay();
       }
-    }
+    };
 
-    function gainTime() {
-      if (gainCooldownTimer <= 0) {
-        time += 1 * gainMultiplier;
-        gainCooldownTimer = gainCooldown;
-        update();
+    // Buy A Dance of Time on Ice (SM2)
+    document.getElementById('sm2Button').onclick = () => {
+      let cost = 2.5 + sm2Level * 0.75; // Tiered cost for A Dance of Time on Ice
+      if (time >= cost) {
+        time -= cost;
+        sm2Level++;
+        csPerSecond /= 2; // Halve the cooldown effect
+        document.getElementById('sm2Button').textContent = `Bought A Dance of Time on Ice (Halve Cooldown) - ${cost.toFixed(2)}s`;
+        if (sm2Level >= 3) {
+          document.getElementById('sm3Button').disabled = false; // Unlock the GET OUT upgrade
+        }
+        updateTimeDisplay();
       }
-    }
+    };
 
-    function buyUpgrade(id) {
-      let upg = upgrades[id];
-      if (!upg.bought && time >= upg.cost) {
-        time -= upg.cost;
-        upg.bought = true;
-        document.getElementById("u" + id).disabled = true;
-
-        if (id === 0) fastenTime = true;
-        if (id === 1) gainCooldown = Math.max(0.5, gainCooldown - 1);
-        if (id === 2) moreTime = true;
-        if (id === 3) {
-          sizeMastery = true;
-          unit = "s";
-          document.getElementById("unit").textContent = "s";
-          document.getElementById("sizeMastery").style.display = "block";
-        }
-        update();
+    // Buy GET OUT (SM3)
+    document.getElementById('sm3Button').onclick = () => {
+      if (time >= 6.66) {
+        time -= 6.66;
+        sm3Unlocked = true;
+        alert("You can now track your playtime!");
+        updateTimeDisplay();
       }
-    }
+    };
 
-    function buySizeUp(id) {
-      let upgrade = sizeUpgrades[id];
-
-      // convert cost from s to cs internally
-      let costCS = upgrade.cost * 100;
-
-      if (id === 1 && upgrade.bought >= 4) return; // limit to 4 levels
-
-      if ((id === 1 && time >= costCS) || (!upgrade.bought && time >= costCS)) {
-        time -= costCS;
-
-        if (id === 0) {
-          gainMultiplier *= 1.15;
-          upgrade.bought = true;
-        }
-        if (id === 1) {
-          gainCooldown = Math.max(0.25, gainCooldown / 2);
-          upgrade.bought += 1;
-        }
-        if (id === 2) {
-          showPlaytime = true;
-          upgrade.bought = true;
-          document.getElementById("playtime").style.display = "block";
-        }
-
-        if (id !== 1) {
-          document.getElementById("s" + id).disabled = true;
-        }
-        update();
-      }
-    }
-
-    // Main game loop
+    // Game loop to increment time and playtime
     setInterval(() => {
-      gainCooldownTimer = Math.max(0, gainCooldownTimer - 0.1);
+      incrementTime();
+    }, 100);
 
-      if (fastenTime) time += 0.25 * gainMultiplier;
-      if (moreTime) time += 0.5 * gainMultiplier;
-      if (showPlaytime) playtime += 0.1;
-
-      update();
-    }, 100); // 0.1s tick
+    updateTimeDisplay(); // Initialize display
   </script>
 </body>
 </html>
