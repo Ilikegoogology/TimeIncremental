@@ -5,51 +5,79 @@
   <title>Time Incremental</title>
   <style>
     body { font-family: monospace; background: #0a0a0a; color: #eee; text-align: center; padding: 20px; }
-    button { padding: 10px 20px; margin: 10px; font-size: 16px; background: #222; color: #fff; border: 1px solid #555; cursor: pointer; }
+    button { padding: 10px 20px; margin: 5px; font-size: 16px; background: #222; color: #fff; border: 1px solid #555; cursor: pointer; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     .section { margin-top: 30px; }
   </style>
 </head>
 <body>
   <h1>🕰️ Time Incremental</h1>
-  <p>Time: <span id="time">0.00</span> cs</p>
+  <p>Time: <span id="time">0.00</span> <span id="unit">cs</span></p>
   <p>Passive Gain Cooldown: <span id="cooldown">4</span> cs</p>
+  <p id="playtime" style="display:none;">Playtime: 0s</p>
 
   <div class="section">
     <button onclick="gainTime()">⏱️ Gain Time</button>
   </div>
 
   <div class="section">
-    <h2>Upgrades</h2>
-    <button onclick="buyUpgrade(0)" id="u0">Fasten Time (+1cs/4cs) - Cost: 2</button><br>
-    <button onclick="buyUpgrade(1)" id="u1">Decrease Time Gain Cooldown - Cost: 5</button><br>
-    <button onclick="buyUpgrade(2)" id="u2">More Time (+5cs/s) - Cost: 10</button><br>
-    <button onclick="buyUpgrade(3)" id="u3">Unlock Size Mastery - Cost: 15</button>
+    <h2>Main Upgrades</h2>
+    <div id="mainUpgrades">
+      <button onclick="buyUpgrade(0)" id="u0">Fasten Time (+1cs/4cs) - Cost: 2</button><br>
+      <button onclick="buyUpgrade(1)" id="u1">Decrease Time Gain Cooldown - Cost: 5</button><br>
+      <button onclick="buyUpgrade(2)" id="u2">More Time (+5cs/s) - Cost: 10</button><br>
+      <button onclick="buyUpgrade(3)" id="u3">Unlock Size Mastery - Cost: 15</button>
+    </div>
   </div>
 
-  <div class="section" id="mastery" style="display: none;">
-    <h3>Size Mastery Unlocked</h3>
-    <p>You now understand das, hs, ks, Ms, etc. (for fun)</p>
+  <div class="section" id="sizeMastery" style="display:none;">
+    <h2>⚙️ Size Mastery Upgrades</h2>
+    <button onclick="buySizeUp(0)" id="s0">Double Chezburger (×1.15 gain) - Cost: 3 s</button><br>
+    <button onclick="buySizeUp(1)" id="s1">A Dance of Time on Ice (halve cooldown) - Cost: 6 s</button><br>
+    <button onclick="buySizeUp(2)" id="s2">GET OUT (Enable Playtime) - Cost: 9 s</button>
   </div>
 
   <script>
     let time = 0;
     let gainCooldown = 4.0;
-    let gainCooldownTimer = 0.0;
+    let gainCooldownTimer = 0;
     let fastenTime = false;
     let moreTime = false;
     let sizeMastery = false;
+    let unit = "cs";
+    let gainMultiplier = 1.0;
+    let timeOnIceLevel = 0;
+    let showPlaytime = false;
+    let playtime = 0;
 
     let upgrades = [
-      { name: "Fasten Time", cost: 2, bought: false },
-      { name: "Decrease Time Gain Cooldown", cost: 5, bought: false },
-      { name: "More Time", cost: 10, bought: false },
-      { name: "Unlock Size Mastery", cost: 15, bought: false }
+      { cost: 2, bought: false },
+      { cost: 5, bought: false },
+      { cost: 10, bought: false },
+      { cost: 15, bought: false }
     ];
+
+    let sizeUpgrades = [
+      { cost: 3, bought: false },
+      { cost: 6, bought: 0 }, // 4 max
+      { cost: 9, bought: false }
+    ];
+
+    function formatTime(t) {
+      return unit === "cs" ? t.toFixed(2) : (t / 100).toFixed(2);
+    }
+
+    function update() {
+      document.getElementById("time").textContent = formatTime(time);
+      document.getElementById("cooldown").textContent = gainCooldown.toFixed(2);
+      if (showPlaytime) {
+        document.getElementById("playtime").textContent = "Playtime: " + Math.floor(playtime) + "s";
+      }
+    }
 
     function gainTime() {
       if (gainCooldownTimer <= 0) {
-        time += 1;
+        time += 1 * gainMultiplier;
         gainCooldownTimer = gainCooldown;
         update();
       }
@@ -60,33 +88,63 @@
       if (!upg.bought && time >= upg.cost) {
         time -= upg.cost;
         upg.bought = true;
+        document.getElementById("u" + id).disabled = true;
 
         if (id === 0) fastenTime = true;
         if (id === 1) gainCooldown = Math.max(0.5, gainCooldown - 1);
         if (id === 2) moreTime = true;
         if (id === 3) {
           sizeMastery = true;
-          document.getElementById("mastery").style.display = "block";
+          unit = "s";
+          document.getElementById("unit").textContent = "s";
+          document.getElementById("sizeMastery").style.display = "block";
         }
-
-        document.getElementById("u" + id).disabled = true;
         update();
       }
     }
 
-    function update() {
-      document.getElementById("time").textContent = time.toFixed(2);
-      document.getElementById("cooldown").textContent = gainCooldown.toFixed(2);
+    function buySizeUp(id) {
+      let upgrade = sizeUpgrades[id];
+
+      // convert cost from s to cs internally
+      let costCS = upgrade.cost * 100;
+
+      if (id === 1 && upgrade.bought >= 4) return; // limit to 4 levels
+
+      if ((id === 1 && time >= costCS) || (!upgrade.bought && time >= costCS)) {
+        time -= costCS;
+
+        if (id === 0) {
+          gainMultiplier *= 1.15;
+          upgrade.bought = true;
+        }
+        if (id === 1) {
+          gainCooldown = Math.max(0.25, gainCooldown / 2);
+          upgrade.bought += 1;
+        }
+        if (id === 2) {
+          showPlaytime = true;
+          upgrade.bought = true;
+          document.getElementById("playtime").style.display = "block";
+        }
+
+        if (id !== 1) {
+          document.getElementById("s" + id).disabled = true;
+        }
+        update();
+      }
     }
 
+    // Main game loop
     setInterval(() => {
       gainCooldownTimer = Math.max(0, gainCooldownTimer - 0.1);
 
-      if (fastenTime) time += 0.25; // 1cs every 4cs
-      if (moreTime) time += 0.5; // 5cs per second
+      if (fastenTime) time += 0.25 * gainMultiplier;
+      if (moreTime) time += 0.5 * gainMultiplier;
+      if (showPlaytime) playtime += 0.1;
 
       update();
-    }, 100); // 0.1s
+    }, 100); // 0.1s tick
   </script>
 </body>
 </html>
